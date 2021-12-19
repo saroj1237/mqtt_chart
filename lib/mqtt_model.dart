@@ -18,12 +18,12 @@ class MqttModel {
 
 class Data {
   String? type;
-  int? value;
+  String value;
 
-  Data({this.type, this.value});
+  Data({this.type, required this.value});
 
-  Data.fromJson(Map<String, dynamic> json) {
-    type = json['type'];
-    value = json['value'];
-  }
+  Data.fromJson(Map<String, dynamic> json) :
+    type = json['type'],
+    value =json['value'].toString();
+
 }

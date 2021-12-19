@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_mqtt/mqtt_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:mqtt_client/mqtt_client.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+
+import 'mqtt_model.dart';
+
+final hamroDatalist = [];
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -13,97 +18,139 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late List<LiveData> chartData;
-  late ChartSeriesController _chartSeriesController1;
-    late ChartSeriesController _chartSeriesController2;
+  // late ChartSeriesController _heatRateController;
+  // late ChartSeriesController _temperatureController;
+  late StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>
+      streamSubscription;
+  late MqttProvider server;
+  final List<MqttModel> mqttDataList = [
+    MqttModel(timestamp: '2021-12-18T16:48:15.219Z', data: [
+      Data(value: '50', type: 'Heat Rate'),
+      Data(value: '50', type: 'Temperature'),
+      Data(value: '50', type: 'SDNN'),
+      Data(value: '50', type: 'HVR'),
+    ])
+  ];
+  String myData = '';
 
   @override
   void initState() {
+    server = MqttProvider();
+    server.initializeConnection();
+    streamSubscription = server.client.updates!.listen((event) {
+      final data = event[0].payload as MqttPublishMessage;
+      final message =
+          MqttPublishPayload.bytesToStringAsString(data.payload.message);
+      print(message);
+      final jsonMessage = jsonDecode(message);
+      setState(() {
+        myData = message;
+      });
+      mqttDataList.add(MqttModel.fromJson(jsonMessage));
+      // _heatRateController.updateDataSource(
+      //     removedDataIndex: 0, addedDataIndex: mqttDataList.length - 1);
+      if (mqttDataList.length > 100) {
+        mqttDataList.removeAt(0);
+      }
+    });
+
     super.initState();
-    chartData = getChartData();
-    Timer.periodic(const Duration(seconds: 2), updateDataSource);
-  }
-
-  int time = 19;
-  void updateDataSource(Timer timer) {
-    chartData.add(LiveData(time++, (math.Random().nextInt(60) + 30),
-        math.Random().nextInt(40) + 20));
-    chartData.removeAt(0);
-    _chartSeriesController1.updateDataSource(
-      addedDataIndex: chartData.length - 1,
-      removedDataIndex: 0,
-    );
-     _chartSeriesController2.updateDataSource(
-      addedDataIndex: chartData.length - 1,
-      removedDataIndex: 0,
-    );
-  }
-
-  List<LiveData> getChartData() {
-    return <LiveData>[
-      LiveData(0, 42, 20),
-      LiveData(1, 47, 20),
-      LiveData(2, 43, 20),
-      LiveData(3, 49, 20),
-      LiveData(4, 54, 20),
-      LiveData(5, 41, 20),
-      LiveData(6, 58, 20),
-      LiveData(7, 51, 20),
-      LiveData(8, 98, 20),
-      LiveData(9, 50, 20),
-      LiveData(10, 53, 50),
-      LiveData(11, 72, 50),
-      LiveData(12, 86, 50),
-      LiveData(13, 52, 50),
-      LiveData(14, 94, 50),
-      LiveData(15, 92, 50),
-      LiveData(16, 86, 50),
-      LiveData(17, 72, 50),
-      LiveData(18, 94, 50)
-    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    // final provider = Provider.of<MqttProvider>(context);
-    return SafeArea(
-        child: Scaffold(
-            body: SfCartesianChart(
-                series: <LineSeries<LiveData, int>>[
-          LineSeries<LiveData, int>(
-            onRendererCreated: (ChartSeriesController controller) {
-              _chartSeriesController1 = controller;
-            },
-            dataSource: chartData,
-            color: const Color.fromRGBO(192, 108, 132, 1),
-            xValueMapper: (LiveData sales, _) => sales.time,
-            yValueMapper: (LiveData sales, _) => sales.speed,
-          ),
-          LineSeries<LiveData, int>(
-            onRendererCreated: (ChartSeriesController controller) {
-              _chartSeriesController2 = controller;
-            },
-            dataSource: chartData,
-            color: Colors.green,
-            xValueMapper: (LiveData sales, _) => sales.time,
-            yValueMapper: (LiveData sales, _) => sales.temperature,
-          )
-        ],
-                primaryXAxis: NumericAxis(
-                    majorGridLines: const MajorGridLines(width: 0),
-                    edgeLabelPlacement: EdgeLabelPlacement.shift,
-                    interval: 3,
-                    title: AxisTitle(text: 'Time (seconds)')),
+    return Scaffold(
+        appBar: AppBar(),
+        body: SafeArea(
+          child: Column(
+            children: [
+              SfCartesianChart(
+                trackballBehavior: TrackballBehavior(
+                    tooltipDisplayMode: TrackballDisplayMode.floatAllPoints),
+                legend: Legend(
+                  isVisible: true,
+                  position: LegendPosition.bottom,
+                ),
+                primaryXAxis: CategoryAxis(
+                    labelRotation: 90,
+                    autoScrollingDelta: 10,
+                    // desiredIntervals: 10, 
+                    autoScrollingMode: AutoScrollingMode.end,
+                    title: AxisTitle(text: "Timestamp")),
                 primaryYAxis: NumericAxis(
+                    desiredIntervals: 8,
                     axisLine: const AxisLine(width: 0),
+                    autoScrollingMode: AutoScrollingMode.end,
                     majorTickLines: const MajorTickLines(size: 0),
-                    title: AxisTitle(text: 'Internet speed (Mbps)')))));
+                    title: AxisTitle(text: 'Data')),
+                series: <LineSeries<MqttModel, String>>[
+                  LineSeries<MqttModel, String>(
+                      enableTooltip: true,
+                      onPointTap: (ChartPointDetails chartPointDetails) {
+                        print(chartPointDetails.pointIndex);
+                      },
+                      legendItemText: 'Heat Rate',
+                      legendIconType: LegendIconType.circle,
+                      // onRendererCreated: (ChartSeriesController controller) {
+                      //   _temperatureChartController = controller;
+                      // },
+                      dataSource: mqttDataList,
+                      color: const Color.fromRGBO(192, 108, 132, 1),
+                      xValueMapper: (MqttModel data, _) {
+                        DateTime time = DateTime.parse(data.timestamp!);
+                        return '${time.hour}:${time.minute}:${time.second}';
+                      },
+                      yValueMapper: (MqttModel manyData, _) {
+                        // print(int.tryParse(manyData.data![1].value));
+                        return double.parse(manyData.data?[0].value ?? "40");
+                      }),
+                  LineSeries<MqttModel, String>(
+                      legendItemText: 'Temperature',
+                      legendIconType: LegendIconType.circle,
+                      dataSource: mqttDataList,
+                      color: Colors.red,
+                      xValueMapper: (MqttModel data, _) {
+                        DateTime time = DateTime.parse(data.timestamp!);
+                        return '${time.hour}:${time.minute}:${time.second}';
+                      },
+                      yValueMapper: (MqttModel manyData, _) {
+                        // print(int.tryParse(manyData.data![1].value));
+                        return double.parse(manyData.data?[1].value ?? "40");
+                      }),
+                  LineSeries<MqttModel, String>(
+                      legendItemText: 'SDNN',
+                      legendIconType: LegendIconType.circle,
+                      dataSource: mqttDataList,
+                      color: Colors.blue,
+                      xValueMapper: (MqttModel data, _) {
+                        DateTime time = DateTime.parse(data.timestamp!);
+                        return '${time.hour}:${time.minute}:${time.second}';
+                      },
+                      yValueMapper: (MqttModel manyData, _) {
+                        return double.parse(manyData.data?[2].value ?? "40");
+                      }),
+                  LineSeries<MqttModel, String>(
+                      legendItemText: 'HVR',
+                      legendIconType: LegendIconType.circle,
+                      dataSource: mqttDataList,
+                      color: Colors.green,
+                      xValueMapper: (MqttModel data, _) {
+                        DateTime time = DateTime.parse(data.timestamp!);
+                        return '${time.hour}:${time.minute}:${time.second}';
+                      },
+                      yValueMapper: (MqttModel manyData, _) {
+                        return double.parse(manyData.data?[3].value ?? "40");
+                      }),
+                ],
+              ),
+            ],
+          ),
+        ));
   }
-}
-
-class LiveData {
-  LiveData(this.time, this.speed, this.temperature);
-  final int time;
-  final num speed;
-  final num temperature;
+  // return Scaffold(
+  //     body: SingleChildScrollView(
+  //   child: Column(
+  //     children: [Text(myData)],
+  //   ),
+  // ));
 }
