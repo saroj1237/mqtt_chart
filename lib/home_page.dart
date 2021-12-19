@@ -57,10 +57,27 @@ class _HomePageState extends State<HomePage> {
     super.initState();
   }
 
+  bool switchState = true;
+  bool bgColorWhite = true;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(),
+        backgroundColor: bgColorWhite?Colors.white:Colors.black,
+        appBar: AppBar(
+          title: const Text("Data Graph"),
+          centerTitle: true,
+          actions: [
+            Switch(
+                value: switchState,
+                onChanged: (state) {
+                  setState(() {
+                    switchState = state;
+                    bgColorWhite  = state;
+                  });
+                })
+          ],
+        ),
         body: SafeArea(
           child: Column(
             children: [
@@ -73,16 +90,25 @@ class _HomePageState extends State<HomePage> {
                 ),
                 primaryXAxis: CategoryAxis(
                     labelRotation: 90,
-                    autoScrollingDelta: 10,
-                    // desiredIntervals: 10, 
+                    autoScrollingDelta: 5,
+                    // desiredIntervals: 5,
                     autoScrollingMode: AutoScrollingMode.end,
-                    title: AxisTitle(text: "Timestamp")),
+                    title: AxisTitle(
+                      text: "Timestamp",
+                      textStyle:
+                          const TextStyle(color: Colors.teal, fontSize: 16),
+                    )),
                 primaryYAxis: NumericAxis(
-                    desiredIntervals: 8,
-                    axisLine: const AxisLine(width: 0),
-                    autoScrollingMode: AutoScrollingMode.end,
-                    majorTickLines: const MajorTickLines(size: 0),
-                    title: AxisTitle(text: 'Data')),
+                  desiredIntervals: 8,
+                  axisLine: const AxisLine(width: 0),
+                  autoScrollingMode: AutoScrollingMode.end,
+                  majorTickLines: const MajorTickLines(size: 0),
+                  title: AxisTitle(
+                    text: 'Data',
+                    textStyle:
+                        const TextStyle(color: Colors.teal, fontSize: 16),
+                  ),
+                ),
                 series: <LineSeries<MqttModel, String>>[
                   LineSeries<MqttModel, String>(
                       enableTooltip: true,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mqtt/home_page.dart';
 import 'package:flutter_mqtt/mqtt_provider.dart';
+import 'package:flutter_mqtt/splash_page.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -20,11 +21,12 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
           title: 'Flutter Demo',
           theme: ThemeData(
             primarySwatch: Colors.blue,
           ),
-          home: const HomePage()),
+          home: const SplashPage()),
     );
   }
 }
